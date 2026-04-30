@@ -120,7 +120,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:4200", "https://localhost:4200"));
+        config.setAllowedOrigins(List.of(
+            "http://localhost:4200", 
+            "https://localhost:4200",
+            "https://limtic-frontend.vercel.app"
+        ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of(
             "Content-Type",
