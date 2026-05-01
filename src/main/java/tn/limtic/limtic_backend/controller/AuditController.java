@@ -9,7 +9,7 @@ import tn.limtic.limtic_backend.service.AuditService;
 
 /**
  * §4.1 CDC — Endpoint admin pour consulter le journal d'audit.
- * Accessible uniquement aux utilisateurs avec le rôle ADMIN.
+ * Accessible aux utilisateurs avec le rôle ADMIN ou SUPER_ADMIN.
  */
 @RestController
 @RequestMapping("/api/admin/audit")
@@ -25,13 +25,13 @@ public class AuditController {
     /**
      * GET /api/admin/audit?page=0&size=50
      * Retourne les dernières entrées du journal, paginées.
-     * Nécessite le rôle ADMIN (configuré dans SecurityConfig).
+     * Accessible aux rôles ADMIN et SUPER_ADMIN.
      */
     @GetMapping
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'CHERCHEUR')")
     public ResponseEntity<Page<AuditLog>> getAuditLog(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "50") int size) {
+            @RequestParam(defaultValue = "100") int size) {
         return ResponseEntity.ok(auditService.getAll(page, size));
     }
 }

@@ -1,9 +1,11 @@
 package tn.limtic.limtic_backend.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import tn.limtic.limtic_backend.model.Chercheur;
 import tn.limtic.limtic_backend.repository.ChercheurRepository;
+import tn.limtic.limtic_backend.service.AuditService;
 import tn.limtic.limtic_backend.service.ChercheurService;
 import java.util.List;
 import java.util.Map;
@@ -16,10 +18,14 @@ public class ChercheurController {
 
     private final ChercheurService chercheurService;
     private final ChercheurRepository chercheurRepository;
+    private final AuditService auditService;
 
-    public ChercheurController(ChercheurService chercheurService, ChercheurRepository chercheurRepository) {
+    public ChercheurController(ChercheurService chercheurService,
+                                ChercheurRepository chercheurRepository,
+                                AuditService auditService) {
         this.chercheurService = chercheurService;
         this.chercheurRepository = chercheurRepository;
+        this.auditService = auditService;
     }
 
     @GetMapping
@@ -33,23 +39,37 @@ public class ChercheurController {
     }
 
     @PostMapping
-    public Chercheur create(@RequestBody Chercheur chercheur) {
-        return chercheurService.save(chercheur);
+    public Chercheur create(@RequestBody Chercheur chercheur, HttpServletRequest request) {
+        Chercheur saved = chercheurService.save(chercheur);
+        auditService.log(request, "CREATE", "Chercheur", saved.getId(),
+            "Chercheur créé : " + saved.getPrenom() + " " + saved.getNom(), true);
+        return saved;
     }
 
     @PutMapping("/{id}")
-    public Chercheur update(@PathVariable Long id, @RequestBody Chercheur chercheur) {
+    public Chercheur update(@PathVariable Long id, @RequestBody Chercheur chercheur,
+                             HttpServletRequest request) {
         chercheur.setId(id);
-        return chercheurService.save(chercheur);
+        Chercheur saved = chercheurService.save(chercheur);
+        auditService.log(request, "UPDATE", "Chercheur", id,
+            "Chercheur modifié : " + saved.getPrenom() + " " + saved.getNom(), true);
+        return saved;
     }
 
     @DeleteMapping("/{id}")
-    public void delete(@PathVariable Long id) {
+    public ResponseEntity<?> delete(@PathVariable Long id, HttpServletRequest request) {
+        Chercheur c = chercheurService.getById(id);
+        String nom = (c != null) ? c.getPrenom() + " " + c.getNom() : "id=" + id;
         chercheurService.delete(id);
+        auditService.log(request, "DELETE", "Chercheur", id,
+            "Chercheur supprimé : " + nom, true);
+        return ResponseEntity.ok(Map.of("message", "Chercheur supprimé"));
     }
 
     @PatchMapping("/{id}/profil")
-    public ResponseEntity<?> updateProfil(@PathVariable Long id, @RequestBody Map<String, String> body) {
+    public ResponseEntity<?> updateProfil(@PathVariable Long id,
+                                           @RequestBody Map<String, String> body,
+                                           HttpServletRequest request) {
         Optional<Chercheur> opt = chercheurRepository.findById(id);
         if (opt.isEmpty()) return ResponseEntity.notFound().build();
         Chercheur c = opt.get();
@@ -64,6 +84,8 @@ public class ChercheurController {
         if (body.containsKey("orcid"))         c.setOrcid(body.get("orcid"));
         if (body.containsKey("linkedin"))      c.setLinkedin(body.get("linkedin"));
         chercheurRepository.save(c);
+        auditService.log(request, "UPDATE", "Chercheur", id,
+            "Profil mis à jour : " + c.getPrenom() + " " + c.getNom(), true);
         return ResponseEntity.ok(Map.of("message", "Profil mis à jour"));
     }
 }

@@ -1,10 +1,12 @@
 package tn.limtic.limtic_backend.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import tn.limtic.limtic_backend.model.Doctorant;
 import tn.limtic.limtic_backend.repository.DoctorantRepository;
 import tn.limtic.limtic_backend.repository.ChercheurRepository;
+import tn.limtic.limtic_backend.service.AuditService;
 
 import java.util.List;
 import java.util.Map;
@@ -17,27 +19,27 @@ public class DoctorantController {
 
     private final DoctorantRepository doctorantRepo;
     private final ChercheurRepository chercheurRepo;
+    private final AuditService auditService;
 
     public DoctorantController(DoctorantRepository doctorantRepo,
-                                ChercheurRepository chercheurRepo) {
+                                ChercheurRepository chercheurRepo,
+                                AuditService auditService) {
         this.doctorantRepo = doctorantRepo;
         this.chercheurRepo = chercheurRepo;
+        this.auditService = auditService;
     }
 
     @GetMapping
-    public List<Doctorant> getAll() {
-        return doctorantRepo.findAll();
-    }
+    public List<Doctorant> getAll() { return doctorantRepo.findAll(); }
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getById(@PathVariable Long id) {
-        return doctorantRepo.findById(id)
-            .map(ResponseEntity::ok)
+        return doctorantRepo.findById(id).map(ResponseEntity::ok)
             .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping
-    public ResponseEntity<?> create(@RequestBody Map<String, Object> body) {
+    public ResponseEntity<?> create(@RequestBody Map<String, Object> body, HttpServletRequest request) {
         Doctorant d = new Doctorant();
         d.setNom((String) body.get("nom"));
         d.setPrenom((String) body.get("prenom"));
@@ -49,16 +51,17 @@ public class DoctorantController {
             d.setDateInscription(java.time.LocalDate.parse(body.get("dateInscription").toString()));
         if (body.get("dateSoutenance") != null)
             d.setDateSoutenance(java.time.LocalDate.parse(body.get("dateSoutenance").toString()));
-        if (body.get("directeurId") != null) {
-            Long did = Long.valueOf(body.get("directeurId").toString());
-            chercheurRepo.findById(did).ifPresent(d::setDirecteur);
-        }
-        return ResponseEntity.ok(doctorantRepo.save(d));
+        if (body.get("directeurId") != null)
+            chercheurRepo.findById(Long.valueOf(body.get("directeurId").toString())).ifPresent(d::setDirecteur);
+        Doctorant saved = doctorantRepo.save(d);
+        auditService.log(request, "CREATE", "Doctorant", saved.getId(),
+            "Doctorant créé : " + saved.getPrenom() + " " + saved.getNom(), true);
+        return ResponseEntity.ok(saved);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable Long id,
-                                     @RequestBody Map<String, Object> body) {
+    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody Map<String, Object> body,
+                                     HttpServletRequest request) {
         Optional<Doctorant> opt = doctorantRepo.findById(id);
         if (opt.isEmpty()) return ResponseEntity.notFound().build();
         Doctorant d = opt.get();
@@ -73,19 +76,21 @@ public class DoctorantController {
         if (body.get("dateSoutenance") != null)
             d.setDateSoutenance(java.time.LocalDate.parse(body.get("dateSoutenance").toString()));
         if (body.containsKey("directeurId")) {
-            if (body.get("directeurId") != null) {
-                Long did = Long.valueOf(body.get("directeurId").toString());
-                chercheurRepo.findById(did).ifPresent(d::setDirecteur);
-            } else {
-                d.setDirecteur(null);
-            }
+            if (body.get("directeurId") != null)
+                chercheurRepo.findById(Long.valueOf(body.get("directeurId").toString())).ifPresent(d::setDirecteur);
+            else d.setDirecteur(null);
         }
-        return ResponseEntity.ok(doctorantRepo.save(d));
+        Doctorant saved = doctorantRepo.save(d);
+        auditService.log(request, "UPDATE", "Doctorant", id,
+            "Doctorant modifié : " + saved.getPrenom() + " " + saved.getNom(), true);
+        return ResponseEntity.ok(saved);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> delete(@PathVariable Long id) {
+    public ResponseEntity<?> delete(@PathVariable Long id, HttpServletRequest request) {
+        String nom = doctorantRepo.findById(id).map(d -> d.getPrenom() + " " + d.getNom()).orElse("id=" + id);
         doctorantRepo.deleteById(id);
+        auditService.log(request, "DELETE", "Doctorant", id, "Doctorant supprimé : " + nom, true);
         return ResponseEntity.ok(Map.of("message", "Doctorant supprimé"));
     }
 }

@@ -100,7 +100,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/contact").permitAll()
 
                 // ── Droits exclusifs SUPER_ADMIN ─────────────────────────────
-                .requestMatchers("/api/admin/parametres/**", "/api/admin/audit/**", "/api/users/**").hasRole("SUPER_ADMIN")
+                .requestMatchers("/api/admin/parametres/**", "/api/users/**").hasRole("SUPER_ADMIN")
+                // ── Journal d'audit : ADMIN, SUPER_ADMIN et CHERCHEUR ────────
+                .requestMatchers(HttpMethod.GET, "/api/admin/audit/**").hasAnyRole("ADMIN", "SUPER_ADMIN", "CHERCHEUR")
                 .requestMatchers(HttpMethod.POST, "/api/axes/**").hasRole("SUPER_ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/axes/**").hasRole("SUPER_ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/axes/**").hasRole("SUPER_ADMIN")
