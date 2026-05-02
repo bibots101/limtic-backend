@@ -9,5 +9,6 @@ import java.util.List;
 public interface PublicationRepository extends JpaRepository<Publication, Long> {
     List<Publication> findByAnnee(int annee);
     List<Publication> findByType(String type);
+    List<Publication> findByStatut(String statut);
     List<Publication> findByAxeId(Long axeId);
 }

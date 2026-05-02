@@ -3,6 +3,7 @@ package tn.limtic.limtic_backend.filter;
 import io.github.bucket4j.*;
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -11,6 +12,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
+@Profile("!test")
 public class RateLimitFilter implements Filter {
 
     // 1 bucket par IP

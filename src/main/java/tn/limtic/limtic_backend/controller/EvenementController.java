@@ -53,7 +53,7 @@ public class EvenementController {
         Evenement saved = evenementService.save(evenement);
         auditService.log(request, "CREATE", "Evenement", saved.getId(),
             "Événement créé : " + saved.getTitre(), true);
-        return ResponseEntity.ok(saved);
+        return ResponseEntity.status(201).body(saved);
     }
 
     @PutMapping("/{id}")

@@ -29,4 +29,17 @@ public class ChercheurService {
     public void delete(Long id) {
         chercheurRepository.deleteById(id);
     }
+
+    public Chercheur update(Long id, Chercheur updated) {
+        Chercheur existing = chercheurRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Chercheur non trouve : " + id));
+        if (updated.getNom() != null) existing.setNom(updated.getNom());
+        if (updated.getPrenom() != null) existing.setPrenom(updated.getPrenom());
+        if (updated.getGrade() != null) existing.setGrade(updated.getGrade());
+        if (updated.getSpecialite() != null) existing.setSpecialite(updated.getSpecialite());
+        if (updated.getBureau() != null) existing.setBureau(updated.getBureau());
+        if (updated.getTelephone() != null) existing.setTelephone(updated.getTelephone());
+        if (updated.getBiographie() != null) existing.setBiographie(updated.getBiographie());
+        return chercheurRepository.save(existing);
+    }
 }

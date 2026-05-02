@@ -17,18 +17,24 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
+
 import jakarta.servlet.http.HttpServletResponse;
 import tn.limtic.limtic_backend.filter.RateLimitFilter;
 
-@Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
+@Configuration
 public class SecurityConfig {
 
     private final RateLimitFilter rateLimitFilter;
 
-    public SecurityConfig(RateLimitFilter rateLimitFilter) {
-        this.rateLimitFilter = rateLimitFilter;
+    @Value("${app.rate-limit.enabled:true}")
+    private boolean rateLimitEnabled;
+
+    public SecurityConfig(ObjectProvider<RateLimitFilter> rateLimitFilterProvider) {
+        this.rateLimitFilter = rateLimitFilterProvider.getIfAvailable();
     }
 
     @Bean
@@ -39,10 +45,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf
                 .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                 .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
-                .ignoringRequestMatchers("/api/auth/login")
-                .ignoringRequestMatchers("/api/auth/signup")
-                .ignoringRequestMatchers("/api/auth/forgot-password")
-                .ignoringRequestMatchers("/api/auth/reset-password")
+                .ignoringRequestMatchers("/api/auth/**")
                 .ignoringRequestMatchers("/api/contact")
                 .ignoringRequestMatchers("/api/evenements/*/photos")
                 .ignoringRequestMatchers("/api/admin/chercheurs/import-csv")
@@ -76,18 +79,25 @@ public class SecurityConfig {
 
                 // ── Swagger protégé ADMIN ────────────────────────────────────
                 .requestMatchers("/swagger-ui/**", "/api-docs/**", "/swagger-ui.html")
-                    .hasAnyRole("ADMIN", "SUPER_ADMIN")
+                    .hasRole("ADMIN")
 
                 // ── Paramètres publics ───────────────────────────────────────
                 .requestMatchers(HttpMethod.GET, "/api/admin/parametres/public").permitAll()
 
                 // ── Routes publiques en lecture ──────────────────────────────
+                .requestMatchers(HttpMethod.GET, "/api/masteriens").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/masteriens/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/chercheurs").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/chercheurs/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/publications").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/publications/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/evenements").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/evenements/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/outils").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/outils/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/axes").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/axes/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/doctorants").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/doctorants/**").permitAll()
 
                 // ── Fichiers uploadés ────────────────────────────────────────
@@ -112,9 +122,11 @@ public class SecurityConfig {
 
                 // ── Tout le reste → authentifié ──────────────────────────────
                 .anyRequest().authenticated()
-            )
+            );
 
-            .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class);
+        if (rateLimitEnabled && rateLimitFilter != null) {
+            http.addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class);
+        }
 
         return http.build();
     }
