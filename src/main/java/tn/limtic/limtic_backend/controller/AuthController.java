@@ -28,6 +28,8 @@ import tn.limtic.limtic_backend.model.PasswordResetToken;
 import tn.limtic.limtic_backend.model.User;
 import tn.limtic.limtic_backend.repository.PasswordResetTokenRepository;
 import tn.limtic.limtic_backend.repository.UserRepository;
+import tn.limtic.limtic_backend.model.EmailVerificationToken;
+import tn.limtic.limtic_backend.repository.EmailVerificationTokenRepository;
 import tn.limtic.limtic_backend.service.AuditService;
 import tn.limtic.limtic_backend.service.SmtpSettingsService;
 
@@ -40,16 +42,19 @@ public class AuthController {
     private final PasswordResetTokenRepository resetTokenRepository;
     private final AuditService auditService;
     private final SmtpSettingsService smtpSettingsService;
+    private final EmailVerificationTokenRepository verificationRepository;
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
     public AuthController(UserRepository userRepository,
                           PasswordResetTokenRepository resetTokenRepository,
                           AuditService auditService,
-                          SmtpSettingsService smtpSettingsService) {
+                          SmtpSettingsService smtpSettingsService,
+                          EmailVerificationTokenRepository verificationRepository) {
         this.userRepository = userRepository;
         this.resetTokenRepository = resetTokenRepository;
         this.auditService = auditService;
         this.smtpSettingsService = smtpSettingsService;
+        this.verificationRepository = verificationRepository;
     }
 
     @PostMapping("/login")
@@ -218,5 +223,27 @@ public class AuthController {
             "Mot de passe réinitialisé : " + email, true);
 
         return ResponseEntity.ok(Map.of("message", "Mot de passe réinitialisé avec succès"));
+    }
+
+    @PostMapping("/verify-email")
+    public ResponseEntity<?> verifyEmail(@RequestBody Map<String, String> body,
+                                          HttpServletRequest request) {
+        String token = body.get("token");
+        Optional<EmailVerificationToken> tokOpt = verificationRepository.findByToken(token);
+        if (tokOpt.isEmpty() || tokOpt.get().getExpiration().isBefore(LocalDateTime.now())) {
+            return ResponseEntity.status(400).body(Map.of("error", "Token invalide ou expiré"));
+        }
+        String email = tokOpt.get().getEmail();
+        Optional<User> userOpt = userRepository.findByEmail(email);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(404).body(Map.of("error", "Utilisateur introuvable"));
+        }
+        User user = userOpt.get();
+        user.setEmailVerified(true);
+        userRepository.save(user);
+        verificationRepository.delete(tokOpt.get());
+        auditService.log(request, "VERIFY_EMAIL", "User", user.getId(),
+            "Email vérifié : " + email, true);
+        return ResponseEntity.ok(Map.of("message", "Email vérifié avec succès"));
     }
 }

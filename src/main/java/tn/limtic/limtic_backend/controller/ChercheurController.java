@@ -3,10 +3,14 @@ package tn.limtic.limtic_backend.controller;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import tn.limtic.limtic_backend.model.Chercheur;
 import tn.limtic.limtic_backend.repository.ChercheurRepository;
 import tn.limtic.limtic_backend.service.AuditService;
 import tn.limtic.limtic_backend.service.ChercheurService;
+import tn.limtic.limtic_backend.service.FileStorageService;
+
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -19,13 +23,16 @@ public class ChercheurController {
     private final ChercheurService chercheurService;
     private final ChercheurRepository chercheurRepository;
     private final AuditService auditService;
+    private final FileStorageService storageService;
 
     public ChercheurController(ChercheurService chercheurService,
                                 ChercheurRepository chercheurRepository,
-                                AuditService auditService) {
+                                AuditService auditService,
+                                FileStorageService storageService) {
         this.chercheurService = chercheurService;
         this.chercheurRepository = chercheurRepository;
         this.auditService = auditService;
+        this.storageService = storageService;
     }
 
     @GetMapping
@@ -54,6 +61,20 @@ public class ChercheurController {
         auditService.log(request, "UPDATE", "Chercheur", id,
             "Chercheur modifié : " + saved.getPrenom() + " " + saved.getNom(), true);
         return saved;
+    }
+
+    @PostMapping("/{id}/photo")
+    public ResponseEntity<?> uploadPhoto(@PathVariable Long id,
+                                         @RequestParam("file") MultipartFile file,
+                                         HttpServletRequest request) throws IOException {
+        Optional<Chercheur> opt = chercheurRepository.findById(id);
+        if (opt.isEmpty()) return ResponseEntity.notFound().build();
+        Chercheur c = opt.get();
+        String photoUrl = storageService.storePhoto(file, "profiles/chercheurs");
+        c.setPhotoUrl(photoUrl);
+        chercheurRepository.save(c);
+        auditService.log(request, "UPDATE", "Chercheur", id, "Photo chercheur mise à jour", true);
+        return ResponseEntity.ok(Map.of("photoUrl", photoUrl));
     }
 
     @DeleteMapping("/{id}")

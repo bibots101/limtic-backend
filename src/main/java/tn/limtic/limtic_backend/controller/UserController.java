@@ -20,7 +20,8 @@ public class UserController {
     private final AuditService auditService;
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
-    public UserController(UserRepository userRepository, AuditService auditService) {
+    public UserController(UserRepository userRepository,
+                          AuditService auditService) {
         this.userRepository = userRepository;
         this.auditService = auditService;
     }
@@ -44,10 +45,11 @@ public class UserController {
         user.setMotDePasse(encoder.encode(body.get("motDePasse")));
         user.setRole(User.Role.valueOf(body.get("role")));
         user.setActif(true);
+        user.setEmailVerified(false);
         userRepository.save(user);
         auditService.log(request, "CREATE", "User", user.getId(),
             "Compte admin créé : " + email + " [" + user.getRole() + "]", true);
-        return ResponseEntity.ok(Map.of("message", "Compte créé"));
+        return ResponseEntity.ok(Map.of("message", "Compte créé avec succès"));
     }
 
     // Changer le rôle

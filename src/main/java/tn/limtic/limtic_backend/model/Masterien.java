@@ -33,6 +33,9 @@ public class Masterien {
     @Column(name = "statut")
     private String statut = "EN_COURS";
 
+    @Column(name = "photo_url")
+    private String photoUrl;
+
     public Long getId() { return id; }
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }
@@ -48,4 +51,6 @@ public class Masterien {
     public void setPromotion(String promotion) { this.promotion = promotion; }
     public String getStatut() { return statut; }
     public void setStatut(String statut) { this.statut = statut; }
+    public String getPhotoUrl() { return photoUrl; }
+    public void setPhotoUrl(String photoUrl) { this.photoUrl = photoUrl; }
 }

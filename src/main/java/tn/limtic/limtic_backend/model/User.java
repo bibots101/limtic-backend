@@ -31,6 +31,12 @@ public class User {
     private String prenom;
     private String avatar;
 
+    @Column(name = "email_verified")
+    private Boolean emailVerified = false;
+
+    @Column(name = "email_verification_required")
+    private Boolean emailVerificationRequired = false;
+
     @Column(name = "cree_le")
     private LocalDateTime creeLe = LocalDateTime.now();
 

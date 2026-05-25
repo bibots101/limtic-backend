@@ -3,11 +3,14 @@ package tn.limtic.limtic_backend.controller;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import tn.limtic.limtic_backend.model.Masterien;
 import tn.limtic.limtic_backend.repository.ChercheurRepository;
 import tn.limtic.limtic_backend.repository.MasterienRepository;
 import tn.limtic.limtic_backend.service.AuditService;
+import tn.limtic.limtic_backend.service.FileStorageService;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -20,13 +23,16 @@ public class MasterienController {
     private final MasterienRepository masterienRepo;
     private final ChercheurRepository chercheurRepo;
     private final AuditService auditService;
+    private final FileStorageService storageService;
 
     public MasterienController(MasterienRepository masterienRepo,
                                 ChercheurRepository chercheurRepo,
-                                AuditService auditService) {
+                                AuditService auditService,
+                                FileStorageService storageService) {
         this.masterienRepo = masterienRepo;
         this.chercheurRepo = chercheurRepo;
         this.auditService = auditService;
+        this.storageService = storageService;
     }
 
     @GetMapping
@@ -46,8 +52,9 @@ public class MasterienController {
         m.setSujetMemoire((String) body.get("sujetMemoire"));
         m.setPromotion((String) body.get("promotion"));
         m.setStatut((String) body.getOrDefault("statut", "EN_COURS"));
-        if (body.get("encadrantId") != null)
-            chercheurRepo.findById(Long.valueOf(body.get("encadrantId").toString())).ifPresent(m::setEncadrant);
+        Long encadrantId = parseLong(body.get("encadrantId"));
+        if (encadrantId != null)
+            chercheurRepo.findById(encadrantId).ifPresent(m::setEncadrant);
         Masterien saved = masterienRepo.save(m);
         auditService.log(request, "CREATE", "Masterien", saved.getId(),
             "Mastérien créé : " + saved.getPrenom() + " " + saved.getNom(), true);
@@ -66,8 +73,9 @@ public class MasterienController {
         if (body.get("promotion") != null)    m.setPromotion((String) body.get("promotion"));
         if (body.get("statut") != null)       m.setStatut((String) body.get("statut"));
         if (body.containsKey("encadrantId")) {
-            if (body.get("encadrantId") != null)
-                chercheurRepo.findById(Long.valueOf(body.get("encadrantId").toString())).ifPresent(m::setEncadrant);
+            Long encadrantIdUpdate = parseLong(body.get("encadrantId"));
+            if (encadrantIdUpdate != null)
+                chercheurRepo.findById(encadrantIdUpdate).ifPresent(m::setEncadrant);
             else m.setEncadrant(null);
         }
         Masterien saved = masterienRepo.save(m);
@@ -76,11 +84,36 @@ public class MasterienController {
         return ResponseEntity.ok(saved);
     }
 
+    @PostMapping("/{id}/photo")
+    public ResponseEntity<?> uploadPhoto(@PathVariable Long id,
+                                         @RequestParam("file") MultipartFile file,
+                                         HttpServletRequest request) throws IOException {
+        Optional<Masterien> opt = masterienRepo.findById(id);
+        if (opt.isEmpty()) return ResponseEntity.notFound().build();
+        Masterien m = opt.get();
+        String photoUrl = storageService.storePhoto(file, "profiles/masteriens");
+        m.setPhotoUrl(photoUrl);
+        masterienRepo.save(m);
+        auditService.log(request, "UPDATE", "Masterien", id, "Photo mastérien mise à jour", true);
+        return ResponseEntity.ok(Map.of("photoUrl", photoUrl));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id, HttpServletRequest request) {
         String nom = masterienRepo.findById(id).map(m -> m.getPrenom() + " " + m.getNom()).orElse("id=" + id);
         masterienRepo.deleteById(id);
         auditService.log(request, "DELETE", "Masterien", id, "Mastérien supprimé : " + nom, true);
         return ResponseEntity.ok(Map.of("message", "Mastérien supprimé"));
+    }
+
+    private Long parseLong(Object value) {
+        if (value == null) return null;
+        String text = value.toString().trim();
+        if (text.isEmpty() || "null".equalsIgnoreCase(text)) return null;
+        try {
+            return Long.valueOf(text);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }

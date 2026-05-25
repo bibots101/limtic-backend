@@ -8,6 +8,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
@@ -54,6 +55,10 @@ public class SecurityConfig {
                 .ignoringRequestMatchers("/api/admin/parametres/logo")
                 .ignoringRequestMatchers("/api/admin/parametres")
                 .ignoringRequestMatchers("/api/admin/parametres/*")
+                .ignoringRequestMatchers("/api/doctorants/*/photo")
+                .ignoringRequestMatchers("/api/masteriens/*/photo")
+                .ignoringRequestMatchers("/api/chercheurs/*/photo")
+                .ignoringRequestMatchers("/api/directeur/photo")
             )
 
             .sessionManagement(session -> session
@@ -83,22 +88,24 @@ public class SecurityConfig {
 
                 // ── Paramètres publics ───────────────────────────────────────
                 .requestMatchers(HttpMethod.GET, "/api/admin/parametres/public").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/admin/parametres", "/api/admin/parametres/*").hasAnyRole("ADMIN", "SUPER_ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/admin/parametres/lot").hasAnyRole("ADMIN", "SUPER_ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/admin/parametres/logo").hasAnyRole("ADMIN", "SUPER_ADMIN")
 
                 // ── Routes publiques en lecture ──────────────────────────────
-                .requestMatchers(HttpMethod.GET, "/api/masteriens").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/masteriens/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/chercheurs").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/chercheurs/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/publications").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/publications/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/evenements").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/evenements/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/outils").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/outils/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/axes").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/axes/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/doctorants").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/doctorants/**").permitAll()
+                .requestMatchers(HttpMethod.GET,
+                    "/api/masteriens", "/api/masteriens/**",
+                    "/api/chercheurs", "/api/chercheurs/**",
+                    "/api/publications", "/api/publications/**",
+                    "/api/evenements", "/api/evenements/**",
+                    "/api/outils", "/api/outils/**",
+                    "/api/axes", "/api/axes/**",
+                    "/api/doctorants", "/api/doctorants/**"
+                ).permitAll()
+
+                // Allow the error page to be accessed without authentication so
+                // internal exceptions forwarded there don't trigger a 401.
+                .requestMatchers("/error", "/error/**").permitAll()
 
                 // ── Fichiers uploadés ────────────────────────────────────────
                 .requestMatchers("/uploads/**").permitAll()
@@ -153,5 +160,18 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
+    }
+
+    @Bean
+    public WebSecurityCustomizer webSecurityCustomizer() {
+        return web -> web.ignoring().requestMatchers(HttpMethod.GET,
+            "/api/masteriens", "/api/masteriens/**",
+            "/api/chercheurs", "/api/chercheurs/**",
+            "/api/publications", "/api/publications/**",
+            "/api/evenements", "/api/evenements/**",
+            "/api/outils", "/api/outils/**",
+            "/api/axes", "/api/axes/**",
+            "/api/doctorants", "/api/doctorants/**"
+        );
     }
 }
