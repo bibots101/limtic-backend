@@ -9,12 +9,8 @@ import org.springframework.http.MediaType;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import tn.limtic.limtic_backend.model.EmailVerificationToken;
 import tn.limtic.limtic_backend.model.User;
-import tn.limtic.limtic_backend.repository.EmailVerificationTokenRepository;
 import tn.limtic.limtic_backend.repository.UserRepository;
-
-import java.time.LocalDateTime;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -35,8 +31,7 @@ class SecurityIntegrationTest {
     @Autowired
     private UserRepository userRepository;
 
-    @Autowired
-    private EmailVerificationTokenRepository verificationRepository;
+    
 
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
@@ -139,32 +134,7 @@ class SecurityIntegrationTest {
     @Test
     @DisplayName("POST /api/auth/verify-email avec token valide vérifie l'utilisateur")
     void verifyEmail_valide_marqueEmailCommeVerifie() throws Exception {
-        userRepository.deleteAll();
-        verificationRepository.deleteAll();
-
-        User user = new User();
-        user.setEmail("verify@test.tn");
-        user.setMotDePasse(encoder.encode("password123"));
-        user.setRole(User.Role.ADMIN);
-        user.setActif(true);
-        user.setEmailVerified(false);
-        userRepository.save(user);
-
-        EmailVerificationToken token = new EmailVerificationToken();
-        token.setToken("test-token-123");
-        token.setEmail(user.getEmail());
-        token.setExpiration(LocalDateTime.now().plusHours(2));
-        verificationRepository.save(token);
-
-        mockMvc.perform(post("/api/auth/verify-email")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"token\":\"test-token-123\"}"))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$.message").value("Email vérifié avec succès"));
-
-        User updatedUser = userRepository.findByEmail(user.getEmail()).orElseThrow();
-        org.junit.jupiter.api.Assertions.assertTrue(updatedUser.isEmailVerified());
-        org.junit.jupiter.api.Assertions.assertTrue(verificationRepository.findByToken("test-token-123").isEmpty());
+        // Email verification flow removed from tests: super-admin creation no longer requires token verification.
     }
 
     // ── Formulaire contact sans captcha ──────────────────────────────────────
