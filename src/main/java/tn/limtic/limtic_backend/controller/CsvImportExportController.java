@@ -1,19 +1,29 @@
 package tn.limtic.limtic_backend.controller;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
-import tn.limtic.limtic_backend.model.Chercheur;
-import tn.limtic.limtic_backend.repository.ChercheurRepository;
-import tn.limtic.limtic_backend.service.AuditService;
-
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import tn.limtic.limtic_backend.model.Chercheur;
+import tn.limtic.limtic_backend.repository.ChercheurRepository;
+import tn.limtic.limtic_backend.service.AuditService;
 
 /**
  * §4.3.2 CDC — Import/Export CSV des membres du laboratoire.
@@ -26,7 +36,6 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/admin/chercheurs")
-@CrossOrigin(origins = {"http://localhost:4200", "https://localhost:4200"}, allowCredentials = "true")
 public class CsvImportExportController {
 
     private static final String CSV_HEADER =

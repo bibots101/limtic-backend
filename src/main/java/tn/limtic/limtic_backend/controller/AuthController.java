@@ -14,7 +14,6 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -24,18 +23,17 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import tn.limtic.limtic_backend.model.EmailVerificationToken;
 import tn.limtic.limtic_backend.model.PasswordResetToken;
 import tn.limtic.limtic_backend.model.User;
+import tn.limtic.limtic_backend.repository.EmailVerificationTokenRepository;
 import tn.limtic.limtic_backend.repository.PasswordResetTokenRepository;
 import tn.limtic.limtic_backend.repository.UserRepository;
-import tn.limtic.limtic_backend.model.EmailVerificationToken;
-import tn.limtic.limtic_backend.repository.EmailVerificationTokenRepository;
 import tn.limtic.limtic_backend.service.AuditService;
 import tn.limtic.limtic_backend.service.SmtpSettingsService;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = {"http://localhost:4200", "https://localhost:4200"}, allowCredentials = "true")
 public class AuthController {
 
     private final UserRepository userRepository;
@@ -43,18 +41,21 @@ public class AuthController {
     private final AuditService auditService;
     private final SmtpSettingsService smtpSettingsService;
     private final EmailVerificationTokenRepository verificationRepository;
+    private final tn.limtic.limtic_backend.service.FrontendUrlService frontendUrlService;
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
     public AuthController(UserRepository userRepository,
                           PasswordResetTokenRepository resetTokenRepository,
                           AuditService auditService,
                           SmtpSettingsService smtpSettingsService,
-                          EmailVerificationTokenRepository verificationRepository) {
+                          EmailVerificationTokenRepository verificationRepository,
+                          tn.limtic.limtic_backend.service.FrontendUrlService frontendUrlService) {
         this.userRepository = userRepository;
         this.resetTokenRepository = resetTokenRepository;
         this.auditService = auditService;
         this.smtpSettingsService = smtpSettingsService;
         this.verificationRepository = verificationRepository;
+        this.frontendUrlService = frontendUrlService;
     }
 
     @PostMapping("/login")
@@ -83,6 +84,13 @@ public class AuthController {
         }
 
         if (!user.isActif()) {
+            // Step 2: distinguish "pending email verification" from a plain disabled account
+            if (Boolean.TRUE.equals(user.getEmailVerificationRequired())
+                    && !Boolean.TRUE.equals(user.getEmailVerified())) {
+                auditService.log(request, "LOGIN", "User", user.getId(),
+                    "Tentative login — email non vérifié : " + email, false);
+                return ResponseEntity.status(403).body(Map.of("error", "EMAIL_NOT_VERIFIED"));
+            }
             auditService.log(request, "LOGIN", "User", user.getId(),
                 "Tentative login — compte désactivé : " + email, false);
             return ResponseEntity.status(403).body(Map.of("error", "Compte désactivé"));
@@ -183,7 +191,7 @@ public class AuthController {
             SimpleMailMessage mail = new SimpleMailMessage();
             mail.setTo(email);
             mail.setSubject("Réinitialisation de votre mot de passe LIMTIC");
-            mail.setText("Cliquez sur ce lien :\n\nhttps://localhost:4200/reset-password?token=" + token
+            mail.setText("Cliquez sur ce lien :\n\n" + frontendUrlService.getConfiguredFrontendUrl() + "/reset-password?token=" + token
                 + "\n\nCe lien expire dans 1 heure.");
             mailSender.send(mail);
         } catch (IllegalStateException e) {
@@ -240,6 +248,8 @@ public class AuthController {
         }
         User user = userOpt.get();
         user.setEmailVerified(true);
+        user.setActif(true);                          // Step 2: unlock the account
+        user.setEmailVerificationRequired(false);     // Step 2: clear the pending flag
         userRepository.save(user);
         verificationRepository.delete(tokOpt.get());
         auditService.log(request, "VERIFY_EMAIL", "User", user.getId(),

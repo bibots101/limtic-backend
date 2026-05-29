@@ -19,7 +19,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -39,19 +38,21 @@ import tn.limtic.limtic_backend.service.PublicationService;
 
 @RestController
 @RequestMapping("/api/publications")
-@CrossOrigin(origins = {"http://localhost:4200", "https://localhost:4200"}, allowCredentials = "true")
 public class PublicationController {
 
     private final PublicationService publicationService;
     private final AuditService auditService;
+    private final tn.limtic.limtic_backend.service.FrontendUrlService frontendUrlService;
 
     private final String uploadDir =
         Paths.get(System.getProperty("user.dir"), "uploads", "publications").toAbsolutePath().normalize().toString();
 
     public PublicationController(PublicationService publicationService,
-                                  AuditService auditService) {
+                                  AuditService auditService,
+                                  tn.limtic.limtic_backend.service.FrontendUrlService frontendUrlService) {
         this.publicationService = publicationService;
         this.auditService = auditService;
+        this.frontendUrlService = frontendUrlService;
     }
 
     @GetMapping
@@ -196,7 +197,7 @@ public class PublicationController {
     }
 
     @GetMapping("/pdf/{filename:.+}")
-    public ResponseEntity<Resource> servePdf(@PathVariable String filename) {
+    public ResponseEntity<Resource> servePdf(@PathVariable String filename, HttpServletRequest request) {
         try {
             Path filePath = Paths.get(uploadDir).resolve(filename).normalize();
             Resource resource = new UrlResource(filePath.toUri());
@@ -209,9 +210,8 @@ public class PublicationController {
                     .contentType(MediaType.APPLICATION_PDF)
                     .header(HttpHeaders.CONTENT_DISPOSITION,
                             "inline; filename=\"" + filename + "\"")
-                    .header("X-Frame-Options", "ALLOW-FROM https://localhost:4200")
                     .header("Content-Security-Policy",
-                            "frame-ancestors 'self' https://localhost:4200 http://localhost:4200")
+                        "frame-ancestors 'self' " + frontendUrlService.resolveFrontendUrl(request))
                     .body(resource);
 
         } catch (MalformedURLException e) {

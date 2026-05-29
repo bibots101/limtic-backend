@@ -1,8 +1,20 @@
 package tn.limtic.limtic_backend.controller;
 
-import jakarta.servlet.http.HttpServletRequest;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import jakarta.servlet.http.HttpServletRequest;
 import tn.limtic.limtic_backend.model.AxeRecherche;
 import tn.limtic.limtic_backend.model.Chercheur;
 import tn.limtic.limtic_backend.repository.AxeRechercheRepository;
@@ -10,13 +22,8 @@ import tn.limtic.limtic_backend.repository.ChercheurRepository;
 import tn.limtic.limtic_backend.repository.PublicationRepository;
 import tn.limtic.limtic_backend.service.AuditService;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
 @RestController
 @RequestMapping("/api/axes")
-@CrossOrigin(origins = {"http://localhost:4200", "https://localhost:4200"}, allowCredentials = "true")
 public class AxeRechercheController {
 
     private final AxeRechercheRepository axeRepo;

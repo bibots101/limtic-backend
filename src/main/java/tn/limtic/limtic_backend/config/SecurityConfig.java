@@ -2,6 +2,8 @@ package tn.limtic.limtic_backend.config;
 
 import java.util.List;
 
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -18,9 +20,6 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.annotation.Value;
-
 import jakarta.servlet.http.HttpServletResponse;
 import tn.limtic.limtic_backend.filter.RateLimitFilter;
 
@@ -33,6 +32,9 @@ public class SecurityConfig {
 
     @Value("${app.rate-limit.enabled:true}")
     private boolean rateLimitEnabled;
+
+    @Value("${app.allowed-origins:http://localhost:4200,https://localhost:4200,https://limtic-frontend.vercel.app}")
+    private String[] allowedOrigins;
 
     public SecurityConfig(ObjectProvider<RateLimitFilter> rateLimitFilterProvider) {
         this.rateLimitFilter = rateLimitFilterProvider.getIfAvailable();
@@ -55,6 +57,7 @@ public class SecurityConfig {
                 .ignoringRequestMatchers("/api/admin/parametres/logo")
                 .ignoringRequestMatchers("/api/admin/parametres")
                 .ignoringRequestMatchers("/api/admin/parametres/*")
+                .ignoringRequestMatchers("/api/users/**")
                 .ignoringRequestMatchers("/api/doctorants/*/photo")
                 .ignoringRequestMatchers("/api/masteriens/*/photo")
                 .ignoringRequestMatchers("/api/chercheurs/*/photo")
@@ -141,11 +144,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of(
-            "http://localhost:4200", 
-            "https://localhost:4200",
-            "https://limtic-frontend.vercel.app"
-        ));
+        config.setAllowedOrigins(List.of(allowedOrigins));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of(
             "Content-Type",
